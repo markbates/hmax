@@ -17,7 +17,7 @@ func Sign(key, message []byte) string {
 
 func Verify(signature string, key, message []byte) bool {
 	s := Sign(key, message)
-	return s == signature
+	return hmac.Equal([]byte(s), []byte(signature))
 }
 
 func SignRequest(req *http.Request, key []byte) error {
