@@ -10,21 +10,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var secret = []byte("password")
 var message = []byte("secure message")
 var signature = "nfVW5dkRrMtKxkn1gsCF0VeBi6/1ira0wmb3nW8YjK4="
+var h = hmax.New("X-Signature", []byte("password"))
 
 func Test_Sign(t *testing.T) {
 	r := require.New(t)
 
-	s := hmax.Sign(secret, message)
+	s := h.Sign(message)
 	r.Equal(signature, s)
 }
 
 func Test_Verify(t *testing.T) {
 	r := require.New(t)
 
-	b := hmax.Verify(signature, secret, message)
+	b := h.Verify(signature, message)
 	r.True(b)
 }
 
@@ -35,7 +35,7 @@ func Test_SignRequest(t *testing.T) {
 	req, err := http.NewRequest("GET", "/", rr)
 	r.NoError(err)
 
-	err = hmax.SignRequest(req, secret)
+	err = h.SignRequest(req)
 	r.NoError(err)
 
 	xs := req.Header.Get("X-Signature")
@@ -54,5 +54,5 @@ func Test_VerifyRequest(t *testing.T) {
 	r.NoError(err)
 	req.Header.Set("X-Signature", signature)
 
-	r.True(hmax.VerifyRequest(req, secret))
+	r.True(h.VerifyRequest(req))
 }

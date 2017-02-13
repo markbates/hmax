@@ -9,37 +9,49 @@ import (
 	"net/http"
 )
 
-func Sign(key, message []byte) string {
-	h := hmac.New(sha256.New, key)
-	h.Write(message)
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+type HMAX struct {
+	Header string
+	Secret []byte
 }
 
-func Verify(signature string, key, message []byte) bool {
-	s := Sign(key, message)
+func New(h string, s []byte) HMAX {
+	return HMAX{
+		Header: h,
+		Secret: s,
+	}
+}
+
+func (h HMAX) Sign(message []byte) string {
+	hm := hmac.New(sha256.New, h.Secret)
+	hm.Write(message)
+	return base64.StdEncoding.EncodeToString(hm.Sum(nil))
+}
+
+func (h HMAX) Verify(signature string, message []byte) bool {
+	s := h.Sign(message)
 	return hmac.Equal([]byte(s), []byte(signature))
 }
 
-func SignRequest(req *http.Request, key []byte) error {
-	b, err := readBody(req)
+func (h HMAX) SignRequest(req *http.Request) error {
+	b, err := h.readBody(req)
 	if err != nil {
 		return err
 	}
 
-	s := Sign(key, b)
-	req.Header.Set("X-Signature", s)
+	s := h.Sign(b)
+	req.Header.Set(h.Header, s)
 	return nil
 }
 
-func VerifyRequest(req *http.Request, key []byte) (bool, error) {
-	b, err := readBody(req)
+func (h HMAX) VerifyRequest(req *http.Request) (bool, error) {
+	b, err := h.readBody(req)
 	if err != nil {
 		return false, err
 	}
-	return Verify(req.Header.Get("X-Signature"), key, b), nil
+	return h.Verify(req.Header.Get(h.Header), b), nil
 }
 
-func readBody(req *http.Request) ([]byte, error) {
+func (h HMAX) readBody(req *http.Request) ([]byte, error) {
 	var b []byte
 	var err error
 	if req.Body != nil {
