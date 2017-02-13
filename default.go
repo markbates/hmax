@@ -1,8 +1,11 @@
 package hmax
 
-import "net/http"
+import (
+	"crypto/sha256"
+	"net/http"
+)
 
-var defaultHMAX = HMAX{Header: "X-Signature"}
+var defaultHMAX = HMAX{Header: "X-Signature", Hasher: sha256.New}
 
 func Sign(secret, message []byte) string {
 	defaultHMAX.Secret = secret
@@ -11,7 +14,8 @@ func Sign(secret, message []byte) string {
 
 func Verify(signature string, secret, message []byte) bool {
 	defaultHMAX.Secret = secret
-	return defaultHMAX.Verify(signature, message)
+	b, _ := defaultHMAX.Verify(signature, message)
+	return b
 }
 
 func SignRequest(req *http.Request, secret []byte) error {

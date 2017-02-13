@@ -5,12 +5,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
+	"hash"
 	"io/ioutil"
 	"net/http"
 )
 
 type HMAX struct {
 	Header string
+	Hasher func() hash.Hash
 	Secret []byte
 }
 
@@ -18,18 +21,25 @@ func New(h string, s []byte) HMAX {
 	return HMAX{
 		Header: h,
 		Secret: s,
+		Hasher: sha256.New,
 	}
 }
 
 func (h HMAX) Sign(message []byte) string {
-	hm := hmac.New(sha256.New, h.Secret)
+	hm := hmac.New(h.Hasher, h.Secret)
 	hm.Write(message)
 	return base64.StdEncoding.EncodeToString(hm.Sum(nil))
 }
 
-func (h HMAX) Verify(signature string, message []byte) bool {
+func (h HMAX) Verify(signature string, message []byte) (bool, error) {
 	s := h.Sign(message)
-	return hmac.Equal([]byte(s), []byte(signature))
+	a := []byte(s)
+	b := []byte(signature)
+	eq := hmac.Equal(a, b)
+	if !eq {
+		return false, fmt.Errorf("signatures did not match: %s %s", s, signature)
+	}
+	return true, nil
 }
 
 func (h HMAX) SignRequest(req *http.Request) error {
@@ -48,7 +58,7 @@ func (h HMAX) VerifyRequest(req *http.Request) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return h.Verify(req.Header.Get(h.Header), b), nil
+	return h.Verify(req.Header.Get(h.Header), b)
 }
 
 func (h HMAX) readBody(req *http.Request) ([]byte, error) {

@@ -24,7 +24,8 @@ func Test_Sign(t *testing.T) {
 func Test_Verify(t *testing.T) {
 	r := require.New(t)
 
-	b := h.Verify(signature, message)
+	b, err := h.Verify(signature, message)
+	r.NoError(err)
 	r.True(b)
 }
 
